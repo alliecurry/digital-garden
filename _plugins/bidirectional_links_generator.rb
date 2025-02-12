@@ -85,6 +85,7 @@ class BidirectionalLinksGenerator < Jekyll::Generator
         id: note_id_from_note(current_note),
         path: "#{site.baseurl}#{current_note.url}#{link_extension}",
         label: current_note.data['title'],
+        status: current_note.data['status'],
       } unless current_note.path.include?('_notes/index.html')
 
       # Edges: Jekyll

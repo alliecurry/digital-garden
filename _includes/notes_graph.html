@@ -1,7 +1,8 @@
 <style>
-  .links line {
-    stroke: #ccc;
-    opacity: 0.5;
+  .links path {
+    stroke: #c434cc;
+    fill: transparent;
+    opacity: 1;
   }
 
   .nodes circle {
@@ -31,11 +32,12 @@
     background: #fcfcfc;
     border-radius: 4px;
     height: auto;
+    cursor: grab;
   }
   
   #graph-wrapper > svg {
     max-width: 100%;
-    display: block;
+    display: block;    
   }
 </style>
 
@@ -51,9 +53,9 @@
         "sha512-FHsFVKQ/T1KWJDGSbrUhTJyS1ph3eRrxI228ND0EGaEp6v4a/vGwPWd3Dtd/+9cI7ccofZvl/wulICEurHN1pg==";
       document.body.appendChild(oScript);
       oScript.onload = () => {
-        const MINIMAL_NODE_SIZE = 8;
-        const MAX_NODE_SIZE = 12;
-        const ACTIVE_RADIUS_FACTOR = 1.5;
+        const MINIMAL_NODE_SIZE = 10;
+        const MAX_NODE_SIZE = 20;
+        const ACTIVE_RADIUS_FACTOR = 1;
         const STROKE = 1;
         const FONT_SIZE = 16;
         const TICKS = 200;
@@ -69,7 +71,7 @@
         const updateNodeSize = () => {
           nodesData.forEach((el) => {
             let weight =
-              3 *
+              8 *
               Math.sqrt(
                 linksData.filter((l) => l.source.id === el.id || l.target.id === el.id)
                   .length + 1
@@ -207,9 +209,10 @@
         const g = svg.append("g");
         let link = g.append("g").attr("class", "links").selectAll(".link");
         let node = g.append("g").attr("class", "nodes").selectAll(".node");
+        let status = g.append("g").attr('class', 'status').selectAll('.status')
         let text = g.append("g").attr("class", "text").selectAll(".text");
 
-        const resize = () => {
+        const resize = () =>   {
           if (d3.event) {
             const scale = d3.event.transform;
             zoomLevel = scale.k;
@@ -234,18 +237,38 @@
 
         const ticked = () => {
           node.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
+          status.attr('x', (d) => d.x - 2).attr('y', (d) => d.y)
           text
             .attr("x", (d) => d.x)
             .attr("y", (d) => d.y - (FONT_BASELINE - nodeSize[d.id]) / zoomLevel);
           link
-            .attr("x1", (d) => d.source.x)
-            .attr("y1", (d) => d.source.y)
-            .attr("x2", (d) => d.target.x)
-            .attr("y2", (d) => d.target.y);
+            .attr('d', (d) => {
+              const dx = d.target.x - d.source.x
+              const dy = d.target.y - d.source.y
+              const dr = Math.sqrt(dx * dx + dy * dy)
+              return 'M' +
+                  d.source.x + ',' +
+                  d.source.y + 'A' +
+                  dr + ',' + dr + ' 0 0,1 ' +
+                  d.target.x + ',' +
+                  d.target.y
+            }) // Creates the actual "arc" (versus previously implemented line)
         };
 
         const restart = () => {
           updateNodeSize();
+
+          status = status.data(nodesData, (d) => d.id);
+          status.exit().remove();
+          status
+            .enter()
+            .append('text')
+            .text((d) => d.status)
+            .attr('font-size', '18px')
+            .attr('text-anchor', 'middle')
+            .attr('dominant-baseline', 'central')
+            .merge(status)
+
           node = node.data(nodesData, (d) => d.id);
           node.exit().remove();
           node = node
@@ -261,7 +284,11 @@
 
           link = link.data(linksData, (d) => `${d.source.id}-${d.target.id}`);
           link.exit().remove();
-          link = link.enter().append("line").attr("stroke-width", STROKE).merge(link);
+          link = link
+            .enter()
+            .append("path")
+            .attr("stroke-width", STROKE)
+            .merge(link);
 
           text = text.data(nodesData, (d) => d.label);
           text.exit().remove();
@@ -278,6 +305,7 @@
             .merge(text);
 
           node.attr("active", (d) => isCurrentPath(d.path) ? true : null);
+          node.attr('long-form', (d) => d.type === 'long-form' ? true : null)
           text.attr("active", (d) => isCurrentPath(d.path) ? true : null);
 
           simulation.nodes(nodesData);
@@ -292,10 +320,16 @@
           ticked();
         };
 
-        const zoomHandler = d3.zoom().scaleExtent([0.2, 3]).on("zoom", resize);
+        const zoomHandler = d3.zoom()
+          .scaleExtent([0.2, 3])
+          .on("zoom", resize)
+          .on("start", function() { svg.style("cursor", "grabbing"); })
+          .on("end", function() { svg.style("cursor", "grab"); });
 
         zoomHandler(svg);
         restart();
+        
+        
 
         function isCurrentPath(notePath) {
           return window.location.pathname.includes(notePath)
