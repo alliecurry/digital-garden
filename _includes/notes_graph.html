@@ -1,14 +1,43 @@
 <style>
+  .grab:hover {
+    cursor: grab;
+  }
+
+  .grabbing:active {
+    cursor: grabbing;
+  }
+
+  @keyframes dash {
+    to {
+      stroke-dashoffset: 1000;
+    }
+  }
+
   .links path {
     stroke: #c434cc;
     fill: transparent;
-    opacity: 1;
+    
+    &.active {
+      stroke-dasharray: 5;
+      animation: dash 40s linear;
+    }
   }
 
   .nodes circle {
     cursor: pointer;
-    fill: #8b88e6;
+    fill:  aqua;
+    stroke: aqua;
     transition: all 0.15s ease-out;
+
+    &.active {
+      stroke: orange;
+      stroke-dasharray: 3;
+      animation: dash 80s linear;
+    }
+  }
+
+  .status {
+    pointer-events: none;
   }
 
   .text text {
@@ -20,7 +49,7 @@
   .nodes [active],
   .text [active] {
     cursor: pointer;
-    fill: black;
+    fill: magenta;
   }
 
   .inactive {
@@ -102,14 +131,14 @@
             if (node_d.id !== d.id && !relatedNodesSet.has(node_d.id)) {
               return "inactive";
             }
-            return "";
+            return "active";
           });
 
           link.attr("class", (link_d) => {
             if (link_d.source.id !== d.id && link_d.target.id !== d.id) {
               return "inactive";
             }
-            return "";
+            return "active";
           });
 
           link.attr("stroke-width", (link_d) => {
@@ -122,7 +151,7 @@
             if (text_d.id !== d.id && !relatedNodesSet.has(text_d.id)) {
               return "inactive";
             }
-            return "";
+            return "active";
           });
         };
 
@@ -176,6 +205,7 @@
         const element = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         element.setAttribute("width", graphWrapper.getBoundingClientRect().width);
         element.setAttribute("height", window.innerHeight * 0.8);
+        element.classList.add('grab', 'grabbing');
         graphWrapper.appendChild(element);
 
         const reportWindowSize = () => {
@@ -209,7 +239,7 @@
         const g = svg.append("g");
         let link = g.append("g").attr("class", "links").selectAll(".link");
         let node = g.append("g").attr("class", "nodes").selectAll(".node");
-        let status = g.append("g").attr('class', 'status').selectAll('.status')
+        let status = g.append("g").attr("class", "status").selectAll(".status");
         let text = g.append("g").attr("class", "text").selectAll(".text");
 
         const resize = () =>   {
@@ -236,8 +266,12 @@
         };
 
         const ticked = () => {
-          node.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
-          status.attr('x', (d) => d.x - 2).attr('y', (d) => d.y)
+          node
+            .attr("cx", (d) => d.x)
+            .attr("cy", (d) => d.y);
+          status
+            .attr("x", (d) => d.x)
+            .attr("y", (d) => d.y);
           text
             .attr("x", (d) => d.x)
             .attr("y", (d) => d.y - (FONT_BASELINE - nodeSize[d.id]) / zoomLevel);
@@ -260,7 +294,7 @@
 
           status = status.data(nodesData, (d) => d.id);
           status.exit().remove();
-          status
+          status = status
             .enter()
             .append('text')
             .text((d) => d.status)
@@ -322,15 +356,19 @@
 
         const zoomHandler = d3.zoom()
           .scaleExtent([0.2, 3])
-          .on("zoom", resize)
-          .on("start", function() { svg.style("cursor", "grabbing"); })
-          .on("end", function() { svg.style("cursor", "grab"); });
+          .on("zoom", resize);
 
         zoomHandler(svg);
         restart();
-        
-        
 
+        const activeNode = svg.select('circle[active]')
+        if (!activeNode.empty()) {
+          const centerNode = (xx, yy) => {
+            g.attr('transform', 'translate(' + (width / 2 - xx) + ',' + (height / 2 - yy) + ')')
+          }
+          centerNode(activeNode.attr('cx'), activeNode.attr('cy'))
+        }
+        
         function isCurrentPath(notePath) {
           return window.location.pathname.includes(notePath)
         }
