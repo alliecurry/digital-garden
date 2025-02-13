@@ -4,7 +4,13 @@ layout: default
 
 <article>
   <div>
-    <h1>{{ page.title }}</h1>
+      <h3 class="f2 f1-m f-headline-l measure-narrow lh-title mv0">
+        <note-title>
+          <span class="bg-black-90 lh-copy white pa1 tracked-tight">
+            {{ page.title }}
+          </span>
+        </note-title>
+      </h3>
     <time datetime="{{ page.last_modified_at | date_to_xmlschema }}">{% if page.type != 'pages' %}
       Last updated on {{ page.last_modified_at | date: "%B %-d, %Y" }}
       {% endif %}
